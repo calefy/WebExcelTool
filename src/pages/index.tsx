@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table, Input, Button, Popconfirm, Form } from 'antd';
 import { WrappedFormUtils } from 'antd/lib/form/Form';
+import Clipboard from 'clipboard'
 
 const FormItem = Form.Item;
 const EditableContext = React.createContext({});
@@ -19,7 +20,6 @@ class EditableCell extends React.Component<any> {
   };
   input: Input
   cell: HTMLTableDataCellElement
-  form: WrappedFormUtils
 
   toggleEdit = () => {
     const editing = !this.state.editing;
@@ -32,13 +32,8 @@ class EditableCell extends React.Component<any> {
 
   save = () => {
     const { record, handleSave } = this.props;
-    this.form.validateFields((error, values) => {
-      if (error) {
-        return;
-      }
-      this.toggleEdit();
-      handleSave({ ...record, ...values });
-    });
+    this.toggleEdit();
+    // handleSave({ ...record, ...values });
   };
 
   render() {
@@ -132,15 +127,26 @@ class EditableTable extends React.Component {
           age: '32',
           address: 'London, Park Lane no. 0',
         },
-        {
-          key: '1',
-          name: 'Edward King 1',
-          age: '32',
-          address: 'London, Park Lane no. 1',
-        },
       ],
       count: 2,
     };
+  }
+
+  componentDidMount() {
+    const clipboard = new Clipboard('#btn')
+    clipboard.on('success', function(e) {
+      console.log('suc: ', e)
+      console.info('Action:', e.action);
+      console.info('Text:', e.text);
+      console.info('Trigger:', e.trigger);
+  
+      e.clearSelection();
+    });
+  
+    clipboard.on('error', function(e) {
+        console.error('Action:', e.action);
+        console.error('Trigger:', e.trigger);
+    });
   }
 
   handleDelete = key => {
@@ -173,6 +179,29 @@ class EditableTable extends React.Component {
     this.setState({ dataSource: newData });
   };
 
+  handleCopy = ()  => {
+
+//    console.log('clipboard content: ', clipboardy)
+//    console.log('officegen: ', officegen)
+//    const docx = officegen('docx')
+//     const pObj = docx.createP ();
+//     pObj.options.align = 'center'; // Also 'right' or 'justify'.
+//     //pObj.options.indentLeft = 1440; // Indent left 1 inch
+//     pObj.addText ( 'Simple' );
+
+// pObj.addText ( ' with color', { color: '000088' } );
+
+// pObj.addText ( ' and back color.', { color: '00ffff', back: '000088' } );
+
+// pObj.addText ( 'Bold + underline', { bold: true, underline: true } );
+
+// pObj.addText ( 'Fonts face only.', { font_face: 'Arial' } );
+// pObj.addHorizontalLine ();
+
+//console.log('docx: ',docx)
+
+  }
+
   render() {
     const { dataSource } = this.state;
     const components = {
@@ -202,6 +231,8 @@ class EditableTable extends React.Component {
           <Button onClick={this.handleAdd} type="primary">Add a row</Button>
           &emsp;
           <Button onClick={this.handleAdd} type="primary">Add a column</Button>
+          &emsp;
+          <Button onClick={this.handleCopy} type="danger">Copy docx content</Button>
         </p>
         <Table
           columns={columns}
@@ -209,6 +240,23 @@ class EditableTable extends React.Component {
           components={components}
           bordered={true}
         />
+
+        <p><button type="button" id="btn" data-clipboard-action="copy" data-clipboard-target="#div">click to copy</button></p>
+        <div id="div">
+          <p><b>Hello</b> world!</p>
+          <table style={{border:'1px solid #eee'}}>
+            <tbody>
+              <tr>
+                <td style={{color:'#f00', fontSize:40}}>1</td>
+                <td>2</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>5</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
