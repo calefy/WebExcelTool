@@ -1,238 +1,186 @@
-import React from 'react';
-import { Table, Input, Button, Popconfirm, Form } from 'antd';
-import { WrappedFormUtils } from 'antd/lib/form/Form';
+import React, { ChangeEvent, KeyboardEvent, FocusEvent } from 'react';
+import { Table, Input, Button, Popconfirm } from 'antd';
 import Clipboard from 'clipboard'
+import styles from './index.css'
 
-const FormItem = Form.Item;
-const EditableContext = React.createContext({});
+interface CellData { // 真实存储的值
+  rowIndex: number
+  colIndex: number
+  text?: string
+  desc?: string
+}
 
-const EditableRow = ({ form, index, ...props }) => (
-  <EditableContext.Provider value={form}>
-    <tr {...props} />
-  </EditableContext.Provider>
-);
+interface TableCellProps extends CellData {
+  onChange?: (val: string) => void
+}
 
-const EditableFormRow = Form.create()(EditableRow);
-
-class EditableCell extends React.Component<any> {
-  state = {
+class TableCell extends React.PureComponent<TableCellProps> {
+  readonly state = {
     editing: false,
-  };
-  input: Input
-  cell: HTMLTableDataCellElement
+    value: ''
+  }
+  input: React.RefObject<Input>
 
-  toggleEdit = () => {
+  constructor(props:TableCellProps) {
+    super(props)
+
+    this.input = React.createRef<Input>()
+    this.state.value = props.text || ''
+
+    this.toggleEdit = this.toggleEdit.bind(this)
+    this.handleEditClick = this.handleEditClick.bind(this)
+    this.handleChange = this.handleChange.bind(this)
+    this.handleSave = this.handleSave.bind(this)
+    this.handleInfoClick = this.handleInfoClick.bind(this)
+  }
+
+  toggleEdit() {
     const editing = !this.state.editing;
     this.setState({ editing }, () => {
       if (editing) {
-        this.input.focus();
+        this.input.current.focus();
       }
     });
   };
 
-  save = () => {
-    const { record, handleSave } = this.props;
+  handleEditClick() {
+    this.toggleEdit()
+  }
+  handleChange(e: ChangeEvent<HTMLInputElement>) {
+    this.setState({ value: e.target.value })
+  }
+  handleSave(e: KeyboardEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>) {
     this.toggleEdit();
-    // handleSave({ ...record, ...values });
-  };
+  }
+  handleInfoClick() {
+
+  }
 
   render() {
-    const { editing } = this.state;
-    const { editable, dataIndex, title, record, index, handleSave, ...restProps } = this.props;
-    console.log(this.props)
+    console.log('cell props: ', this.props)
+    const { editing, value } = this.state;
+    const { rowIndex, colIndex, text, desc } = this.props;
+
+    const textNode = <><div onClick={this.handleEditClick}>{text}</div><i onClick={this.handleInfoClick}>i</i></>
+
+    const inputNodeProps = {
+      value,
+      ref: this.input,
+      onChange: this.handleChange,
+      onPressEnter: this.handleSave,
+      onBlur: this.handleSave
+    }
+    const inputNode = <Input {...inputNodeProps}/>
+
     return (
-      <td ref={node => (this.cell = node)} {...restProps}>
-        {editable ? (
-          <EditableContext.Consumer>
-            {(form: WrappedFormUtils) => {
-              this.form = form;
-              return editing ? (
-                <FormItem style={{ margin: 0 }}>
-                  {form.getFieldDecorator<string>(dataIndex, {
-                    rules: [
-                      {
-                        required: true,
-                        message: `${title} is required.`,
-                      },
-                    ],
-                    initialValue: record[dataIndex],
-                  })(
-                    <Input
-                      ref={node => (this.input = node)}
-                      onPressEnter={this.save}
-                      onBlur={this.save}
-                    />
-                  )}
-                </FormItem>
-              ) : (
-                <div
-                  className="editable-cell-value-wrap"
-                  style={{ paddingRight: 24 }}
-                  onClick={this.toggleEdit}
-                >
-                  {restProps.children}
-                </div>
-              );
-            }}
-          </EditableContext.Consumer>
-        ) : (
-          restProps.children
-        )}
+      <td>
+          <div className={styles.cell} title={desc}>
+            {colIndex === -1 ? text : editing ? inputNode : textNode}
+          </div>
       </td>
     );
   }
 }
 
-class EditableTable extends React.Component {
-  columns: any
+
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+class EditableTable extends React.PureComponent {
   readonly state = {
-    dataSource: [],
-    count: 0
+    colNum: 3, // 总列数
+    rowNum: 3, // 总行数
+    data: {} // 存储实际的值 [rowIndex_colIndex]: CellData
   }
 
   constructor(props) {
     super(props);
-    this.columns = [
-      {
-        title: '1',
-        dataIndex: 'name',
-        width: '30%',
-        editable: true,
-      },
-      {
-        title: 'age',
-        dataIndex: 'age',
-      },
-      {
-        title: 'address',
-        dataIndex: 'address',
-      },
-      {
-        title: 'operation',
-        dataIndex: 'operation',
-        render: (text, record) =>
-          this.state.dataSource.length >= 1 ? (
-            <Popconfirm title="Sure to delete?" onConfirm={() => this.handleDelete(record.key)}>
-              <a href="javascript:;">Delete</a>
-            </Popconfirm>
-          ) : null,
-      },
-    ];
-
-    this.state = {
-      dataSource: [
-        {
-          key: '0',
-          name: 'Edward King 0',
-          age: '32',
-          address: 'London, Park Lane no. 0',
-        },
-      ],
-      count: 2,
-    };
   }
 
   componentDidMount() {
     const clipboard = new Clipboard('#btn')
     clipboard.on('success', function(e) {
-      console.log('suc: ', e)
-      console.info('Action:', e.action);
-      console.info('Text:', e.text);
-      console.info('Trigger:', e.trigger);
-  
       e.clearSelection();
-    });
-  
-    clipboard.on('error', function(e) {
-        console.error('Action:', e.action);
-        console.error('Trigger:', e.trigger);
     });
   }
 
-  handleDelete = key => {
-    const dataSource = [...this.state.dataSource];
-    this.setState({ dataSource: dataSource.filter(item => item.key !== key) });
-  };
+  // 列数据组装为需要格式，-1表示第一列
+  getColumns() {
+    const columns = []
+    for (let i = -1; i < this.state.colNum; i++) {
+      columns.push(this.getColumnData(i))
+    }
+    return columns
+  }
+  getColumnData(colIndex:number) {
+    const colData: any = {
+      key: 'c_' + colIndex,
+      dataIndex: colIndex,
+      onCell: this.onCell(colIndex) // 覆盖dataSource中的值
+    }
+    if (colIndex === -1) {
+      colData.title = ''
+      colData.width = 30
+    } else {
+      colData.title =
+          (colIndex > 26 ? LETTERS[Math.floor(colIndex/26)] : '') + LETTERS[colIndex]
+    }
+    return colData
+  }
+  onCell(colIndex: number) {
+    return (record: any, rowIndex: number) => {
+      const res: CellData = { rowIndex, colIndex, text: '' }
+      if (colIndex === -1) {
+        res.text = (rowIndex + 1).toString()
+      } else {
+        const d: CellData = this.state.data[`${rowIndex}_${colIndex}`]
+        if (d) {
+          res.text = d.text || ''
+          res.desc = d.desc || ''
+        }
+      }
+      return res
+    }
+  }
 
-  handleAdd = () => {
-    const { count, dataSource } = this.state;
-    const newData = {
-      key: count,
-      name: `Edward King ${count}`,
-      age: 32,
-      address: `London, Park Lane no. ${count}`,
-    };
-    this.setState({
-      dataSource: [...dataSource, newData],
-      count: count + 1,
-    });
-  };
-
-  handleSave = row => {
-    const newData = [...this.state.dataSource];
-    const index = newData.findIndex(item => row.key === item.key);
-    const item = newData[index];
-    newData.splice(index, 1, {
-      ...item,
-      ...row,
-    });
-    this.setState({ dataSource: newData });
-  };
-
-  handleCopy = ()  => {
-
-//    console.log('clipboard content: ', clipboardy)
-//    console.log('officegen: ', officegen)
-//    const docx = officegen('docx')
-//     const pObj = docx.createP ();
-//     pObj.options.align = 'center'; // Also 'right' or 'justify'.
-//     //pObj.options.indentLeft = 1440; // Indent left 1 inch
-//     pObj.addText ( 'Simple' );
-
-// pObj.addText ( ' with color', { color: '000088' } );
-
-// pObj.addText ( ' and back color.', { color: '00ffff', back: '000088' } );
-
-// pObj.addText ( 'Bold + underline', { bold: true, underline: true } );
-
-// pObj.addText ( 'Fonts face only.', { font_face: 'Arial' } );
-// pObj.addHorizontalLine ();
-
-//console.log('docx: ',docx)
-
+  // 获取行数据记录
+  getRows() {
+    const rows= []
+    for (let i = 0; i < this.state.rowNum; i++) {
+      rows.push(this.getRowData(i))
+    }
+    return rows
+  }
+  getRowData(rowIndex: number) {
+    const { colNum, data } = this.state
+    const row = { key: 'r_' + rowIndex }
+    for (let i = -1; i < colNum; i++) {
+      if (i === -1) {
+        row[i] = rowIndex + 1
+      } else {
+        const d: CellData = data[`${rowIndex}_${i}`]
+        row[i] = d ? d.text || '' : ''
+      }
+    }
+    return row;
   }
 
   render() {
-    const { dataSource } = this.state;
     const components = {
       body: {
-        row: EditableFormRow,
-        cell: EditableCell,
-      },
-    };
-    const columns = this.columns.map(col => {
-      if (!col.editable) {
-        return col;
+        cell: TableCell
       }
-      return {
-        ...col,
-        onCell: record => ({
-          record,
-          editable: col.editable,
-          dataIndex: col.dataIndex,
-          title: col.title,
-          handleSave: this.handleSave,
-        }),
-      };
-    });
+    };
+    const columns = this.getColumns();
+    const dataSource = this.getRows();
+    console.log(columns, dataSource)
+    console.log('--render table--')
     return (
       <div style={{padding:10}}>
         <p>
-          <Button onClick={this.handleAdd} type="primary">Add a row</Button>
+          <Button onClick={null} type="primary">Add a row</Button>
           &emsp;
-          <Button onClick={this.handleAdd} type="primary">Add a column</Button>
+          <Button onClick={null} type="primary">Add a column</Button>
           &emsp;
-          <Button onClick={this.handleCopy} type="danger">Copy docx content</Button>
+          <Button onClick={null} type="danger">Copy docx content</Button>
         </p>
         <Table
           columns={columns}
