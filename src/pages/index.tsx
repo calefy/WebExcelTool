@@ -73,17 +73,18 @@ class TableCell extends React.PureComponent<TableCellProps> {
     const inputNode = <Input {...inputNodeProps}/>
 
     return (
-      <td>
           <div className={styles.cell} title={desc}>
             {colIndex === -1 ? text : editing ? inputNode : textNode}
           </div>
-      </td>
     );
   }
 }
 
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+/**
+ * 实际的值存储到 data中，每次渲染根据行列数，动态获取数据
+ */
 class EditableTable extends React.PureComponent {
   readonly state = {
     colNum: 3, // 总列数
@@ -93,6 +94,9 @@ class EditableTable extends React.PureComponent {
 
   constructor(props) {
     super(props);
+
+    this.handleAddColumn = this.handleAddColumn.bind(this)
+    this.handleAddRow = this.handleAddRow.bind(this)
   }
 
   componentDidMount() {
@@ -113,34 +117,35 @@ class EditableTable extends React.PureComponent {
   getColumnData(colIndex:number) {
     const colData: any = {
       key: 'c_' + colIndex,
-      dataIndex: colIndex,
-      onCell: this.onCell(colIndex) // 覆盖dataSource中的值
+      dataIndex: colIndex.toString(),
+      render: this.getCellRender(colIndex)
     }
     if (colIndex === -1) {
       colData.title = ''
       colData.width = 30
     } else {
-      colData.title =
-          (colIndex > 26 ? LETTERS[Math.floor(colIndex/26)] : '') + LETTERS[colIndex]
+      const prefix: string = colIndex >= 26 ? LETTERS[Math.floor(colIndex/26) - 1] : ''
+      colData.title = prefix + LETTERS[colIndex % 26]
     }
     return colData
   }
-  onCell(colIndex: number) {
-    return (record: any, rowIndex: number) => {
-      const res: CellData = { rowIndex, colIndex, text: '' }
+  getCellRender(colIndex: number) {
+    return (text, record, rowIndex) => {
       if (colIndex === -1) {
-        res.text = (rowIndex + 1).toString()
+        return text
       } else {
         const d: CellData = this.state.data[`${rowIndex}_${colIndex}`]
-        if (d) {
-          res.text = d.text || ''
-          res.desc = d.desc || ''
-        }
+        return (
+          <TableCell
+            rowIndex={rowIndex}
+            colIndex={colIndex}
+            text={text}
+            desc={d ? d.desc : null}
+          />
+        )
       }
-      return res
     }
   }
-
   // 获取行数据记录
   getRows() {
     const rows= []
@@ -163,6 +168,13 @@ class EditableTable extends React.PureComponent {
     return row;
   }
 
+  handleAddColumn() {
+    this.setState({ colNum: this.state.colNum + 1 })
+  }
+  handleAddRow() {
+    this.setState({ rowNum: this.state.rowNum + 1 })
+  }
+
   render() {
     const components = {
       body: {
@@ -176,17 +188,17 @@ class EditableTable extends React.PureComponent {
     return (
       <div style={{padding:10}}>
         <p>
-          <Button onClick={null} type="primary">Add a row</Button>
+          <Button onClick={this.handleAddRow} type="primary">Add a row</Button>
           &emsp;
-          <Button onClick={null} type="primary">Add a column</Button>
+          <Button onClick={this.handleAddColumn} type="primary">Add a column</Button>
           &emsp;
           <Button onClick={null} type="danger">Copy docx content</Button>
         </p>
         <Table
           columns={columns}
           dataSource={dataSource}
-          components={components}
           bordered={true}
+          pagination={false}
         />
 
         <p><button type="button" id="btn" data-clipboard-action="copy" data-clipboard-target="#div">click to copy</button></p>
