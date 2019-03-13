@@ -11,3 +11,8 @@
 
 .cell .word{min-height:25px;line-height:25px;}
 .cell input{height:25px;width:75px;}
+
+.prod table{border-collapse: collapse;border:1px solid #eee;}
+.prod td{border:1px solid #eee;padding:10px!important;}
+.prod tr td:first-child{background-color:transparent;font-weight:normal;}
+.prod td p{color:#999;font-size:0.9em;font-style: italic;}

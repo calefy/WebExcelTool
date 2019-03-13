@@ -130,6 +130,7 @@ class EditableTable extends React.PureComponent {
   readonly state = {
     colNum: 3, // 总列数
     rowNum: 3, // 总行数
+    copyModal: false,
   }
   // 存储实际的值 [rowIndex_colIndex]: CellData
   data = {}
@@ -140,10 +141,12 @@ class EditableTable extends React.PureComponent {
     this.handleAddColumn = this.handleAddColumn.bind(this)
     this.handleAddRow = this.handleAddRow.bind(this)
     this.handleCellChange = this.handleCellChange.bind(this)
+
+    this.toggleCopyModal = this.toggleCopyModal.bind(this)
   }
 
   componentDidMount() {
-    const clipboard = new Clipboard('#btn')
+    const clipboard = new Clipboard('#copyBtn')
     clipboard.on('success', function(e) {
       e.clearSelection();
     });
@@ -230,6 +233,10 @@ class EditableTable extends React.PureComponent {
     }
   }
 
+  toggleCopyModal() {
+    this.setState({ copyModal: !this.state.copyModal })
+  }
+
   render() {
     const columns = this.getColumns();
     const dataSource = this.getRows();
@@ -240,8 +247,6 @@ class EditableTable extends React.PureComponent {
           <Button onClick={this.handleAddRow} type="primary">Add A Row</Button>
           &emsp;
           <Button onClick={this.handleAddColumn} type="primary">Add A Column</Button>
-          &emsp;
-          <Button onClick={null} type="danger">Copy docx content</Button>
         </p>
 
         <Table
@@ -254,22 +259,45 @@ class EditableTable extends React.PureComponent {
 
         <hr/>
 
-        <p><button type="button" id="btn" data-clipboard-action="copy" data-clipboard-target="#div">click to copy</button></p>
-        <div id="div">
-          <p><b>Hello</b> world!</p>
-          <table style={{border:'1px solid #eee'}}>
-            <tbody>
-              <tr>
-                <td style={{color:'#f00', fontSize:40}}>1</td>
-                <td>2</td>
-              </tr>
-              <tr>
-                <td>4</td>
-                <td>5</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <p>
+          <Button
+            type="danger"
+            onClick={this.toggleCopyModal}
+          >
+            Copy to clipboard
+          </Button>
+        </p>
+        <Modal
+          visible={this.state.copyModal}
+          title="复制确认"
+          okText="复制"
+          cancelText="取消"
+          okButtonProps={{id: 'copyBtn', 'data-clipboard-action': 'copy', 'data-clipboard-target': '#copyCnt'}}
+          onCancel={this.toggleCopyModal}
+          onOk={this.toggleCopyModal}
+        >
+          <div id="copyCnt" className={styles.prod}>
+            <table>
+              <tbody>
+                {dataSource.map((row, rowIndex) => {
+                  return (
+                    <tr key={rowIndex}>
+                      {columns.map((column, index) => {
+                        const colIndex = index - 1
+                        if (colIndex < 0) { return null; }
+                        const d = this.data[`${rowIndex}_${colIndex}`]
+                        return <td key={colIndex}>
+                            {row[column.dataIndex]}
+                            {d && d.desc ? <p>{d.desc}</p> : null}
+                          </td>
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Modal>
       </div>
     );
   }
