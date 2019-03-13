@@ -3,6 +3,7 @@ import { Table, Input, Button, Popconfirm } from 'antd';
 import Clipboard from 'clipboard'
 import styles from './index.css'
 
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 interface CellData { // 真实存储的值
   rowIndex: number
   colIndex: number
@@ -11,13 +12,14 @@ interface CellData { // 真实存储的值
 }
 
 interface TableCellProps extends CellData {
-  onChange?: (val: string) => void
+  onChange?: (rowIndex: number, colIndex: number, text: string, desc: string) => void
 }
 
 class TableCell extends React.PureComponent<TableCellProps> {
   readonly state = {
     editing: false,
-    value: ''
+    value: '',
+    desc: '',
   }
   input: React.RefObject<Input>
 
@@ -26,6 +28,7 @@ class TableCell extends React.PureComponent<TableCellProps> {
 
     this.input = React.createRef<Input>()
     this.state.value = props.text || ''
+    this.state.desc = props.desc || ''
 
     this.toggleEdit = this.toggleEdit.bind(this)
     this.handleEditClick = this.handleEditClick.bind(this)
@@ -48,6 +51,9 @@ class TableCell extends React.PureComponent<TableCellProps> {
   }
   handleChange(e: ChangeEvent<HTMLInputElement>) {
     this.setState({ value: e.target.value })
+
+    const {rowIndex, colIndex} = this.props
+    this.props.onChange(rowIndex, colIndex, e.target.value, this.state.desc)
   }
   handleSave(e: KeyboardEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>) {
     this.toggleEdit();
@@ -57,31 +63,29 @@ class TableCell extends React.PureComponent<TableCellProps> {
   }
 
   render() {
-    console.log('cell props: ', this.props)
-    const { editing, value } = this.state;
-    const { rowIndex, colIndex, text, desc } = this.props;
+    const { editing, value, desc } = this.state;
+    const { rowIndex, colIndex } = this.props;
 
-    const textNode = <><div onClick={this.handleEditClick}>{text}</div><i onClick={this.handleInfoClick}>i</i></>
+    const textNode = <><div onClick={this.handleEditClick} className={styles.word}>{value}</div><i onClick={this.handleInfoClick}>i</i></>
 
     const inputNodeProps = {
       value,
       ref: this.input,
       onChange: this.handleChange,
       onPressEnter: this.handleSave,
-      onBlur: this.handleSave
+      onBlur: this.handleSave,
     }
     const inputNode = <Input {...inputNodeProps}/>
 
     return (
           <div className={styles.cell} title={desc}>
-            {colIndex === -1 ? text : editing ? inputNode : textNode}
+            {colIndex === -1 ? value : editing ? inputNode : textNode}
           </div>
     );
   }
 }
 
 
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /**
  * 实际的值存储到 data中，每次渲染根据行列数，动态获取数据
  */
@@ -89,14 +93,16 @@ class EditableTable extends React.PureComponent {
   readonly state = {
     colNum: 3, // 总列数
     rowNum: 3, // 总行数
-    data: {} // 存储实际的值 [rowIndex_colIndex]: CellData
   }
+  // 存储实际的值 [rowIndex_colIndex]: CellData
+  data = {}
 
   constructor(props) {
     super(props);
 
     this.handleAddColumn = this.handleAddColumn.bind(this)
     this.handleAddRow = this.handleAddRow.bind(this)
+    this.handleCellChange = this.handleCellChange.bind(this)
   }
 
   componentDidMount() {
@@ -122,10 +128,11 @@ class EditableTable extends React.PureComponent {
     }
     if (colIndex === -1) {
       colData.title = ''
-      colData.width = 30
+      colData.width = 40
     } else {
       const prefix: string = colIndex >= 26 ? LETTERS[Math.floor(colIndex/26) - 1] : ''
       colData.title = prefix + LETTERS[colIndex % 26]
+      colData.width = 100
     }
     return colData
   }
@@ -134,13 +141,14 @@ class EditableTable extends React.PureComponent {
       if (colIndex === -1) {
         return text
       } else {
-        const d: CellData = this.state.data[`${rowIndex}_${colIndex}`]
+        const d: CellData = this.data[`${rowIndex}_${colIndex}`]
         return (
           <TableCell
             rowIndex={rowIndex}
             colIndex={colIndex}
             text={text}
             desc={d ? d.desc : null}
+            onChange={this.handleCellChange}
           />
         )
       }
@@ -155,51 +163,59 @@ class EditableTable extends React.PureComponent {
     return rows
   }
   getRowData(rowIndex: number) {
-    const { colNum, data } = this.state
+    const { colNum } = this.state
     const row = { key: 'r_' + rowIndex }
     for (let i = -1; i < colNum; i++) {
       if (i === -1) {
         row[i] = rowIndex + 1
       } else {
-        const d: CellData = data[`${rowIndex}_${i}`]
+        const d: CellData = this.data[`${rowIndex}_${i}`]
         row[i] = d ? d.text || '' : ''
       }
     }
     return row;
   }
 
+  // 添加列
   handleAddColumn() {
     this.setState({ colNum: this.state.colNum + 1 })
   }
+
+  // 添加行
   handleAddRow() {
     this.setState({ rowNum: this.state.rowNum + 1 })
   }
 
+  // 单元格数据变更
+  handleCellChange(rowIndex: number, colIndex: number, text: string, desc: string) {
+    this.data[`${rowIndex}_${colIndex}`] = {
+      rowIndex, colIndex, text, desc
+    }
+  }
+
   render() {
-    const components = {
-      body: {
-        cell: TableCell
-      }
-    };
     const columns = this.getColumns();
     const dataSource = this.getRows();
-    console.log(columns, dataSource)
-    console.log('--render table--')
+
     return (
-      <div style={{padding:10}}>
+      <div className={styles.page}>
         <p>
-          <Button onClick={this.handleAddRow} type="primary">Add a row</Button>
+          <Button onClick={this.handleAddRow} type="primary">Add A Row</Button>
           &emsp;
-          <Button onClick={this.handleAddColumn} type="primary">Add a column</Button>
+          <Button onClick={this.handleAddColumn} type="primary">Add A Column</Button>
           &emsp;
           <Button onClick={null} type="danger">Copy docx content</Button>
         </p>
+
         <Table
           columns={columns}
           dataSource={dataSource}
           bordered={true}
           pagination={false}
+          scroll={{x: true}}
         />
+
+        <hr/>
 
         <p><button type="button" id="btn" data-clipboard-action="copy" data-clipboard-target="#div">click to copy</button></p>
         <div id="div">

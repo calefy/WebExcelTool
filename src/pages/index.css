@@ -1,2 +1,13 @@
-.cell{border:2px solid transparent;}
+.page{padding:10px;}
+.page table{min-width:auto!important;}
+.page th{text-align:center!important;}
+.page td{padding:0!important;}
+.page tr td:first-child{text-align:center;font-weight:bold;background-color:#fafafa;}
+
+.cell{position:relative;padding:10px;border:2px solid transparent;}
+.cell i{display:none;position:absolute;right:0;bottom:0;width:16px;height:16px;line-height:16px;text-align:center;font-weight:bold;color:#fff;cursor:pointer;border-radius:50%;background-color:#f63;box-shadow: 0 0 3px rgba(0,0,0,.1);}
 .cell:hover{border-color:#1fc75f;}
+.cell:hover i{display:block;}
+
+.cell .word{min-height:25px;line-height:25px;}
+.cell input{height:25px;width:75px;}
