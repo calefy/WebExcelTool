@@ -1,7 +1,8 @@
 import React, { ChangeEvent, KeyboardEvent, FocusEvent } from 'react';
-import { Table, Input, Button, Popconfirm } from 'antd';
+import { Table, Input, Button, Popconfirm, Modal } from 'antd';
 import Clipboard from 'clipboard'
 import styles from './index.css'
+import TextArea from 'antd/lib/input/TextArea';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 interface CellData { // 真实存储的值
@@ -20,21 +21,30 @@ class TableCell extends React.PureComponent<TableCellProps> {
     editing: false,
     value: '',
     desc: '',
+    descShow: false,
   }
   input: React.RefObject<Input>
+  textarea: React.RefObject<TextArea>
+  lastDesc = ''
 
   constructor(props:TableCellProps) {
     super(props)
 
-    this.input = React.createRef<Input>()
     this.state.value = props.text || ''
     this.state.desc = props.desc || ''
+
+    this.input = React.createRef<Input>()
+    this.textarea = React.createRef<TextArea>()
 
     this.toggleEdit = this.toggleEdit.bind(this)
     this.handleEditClick = this.handleEditClick.bind(this)
     this.handleChange = this.handleChange.bind(this)
     this.handleSave = this.handleSave.bind(this)
-    this.handleInfoClick = this.handleInfoClick.bind(this)
+
+    this.toggleDescModal = this.toggleDescModal.bind(this)
+    this.handleDescChange = this.handleDescChange.bind(this)
+    this.handleDescCancel = this.handleDescCancel.bind(this)
+    this.handleDescSave = this.handleDescSave.bind(this)
   }
 
   toggleEdit() {
@@ -58,15 +68,33 @@ class TableCell extends React.PureComponent<TableCellProps> {
   handleSave(e: KeyboardEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>) {
     this.toggleEdit();
   }
-  handleInfoClick() {
 
+  toggleDescModal() {
+    if (!this.state.descShow) {
+      this.lastDesc = this.state.desc
+    }
+    this.setState({ descShow: !this.state.descShow })
+  }
+  handleDescChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    this.setState({ desc: e.target.value })
+  }
+  handleDescSave() {
+    this.toggleDescModal()
+
+    const {rowIndex, colIndex} = this.props
+    const {value, desc} = this.state
+    this.props.onChange(rowIndex, colIndex, value, desc)
+  }
+  handleDescCancel() {
+    this.toggleDescModal()
+    this.setState({ desc: this.lastDesc })
   }
 
   render() {
     const { editing, value, desc } = this.state;
     const { rowIndex, colIndex } = this.props;
 
-    const textNode = <><div onClick={this.handleEditClick} className={styles.word}>{value}</div><i onClick={this.handleInfoClick}>i</i></>
+    const textNode = <><div onClick={this.handleEditClick} className={styles.word}>{value}</div><i onClick={this.toggleDescModal}>i</i></>
 
     const inputNodeProps = {
       value,
@@ -78,9 +106,18 @@ class TableCell extends React.PureComponent<TableCellProps> {
     const inputNode = <Input {...inputNodeProps}/>
 
     return (
-          <div className={styles.cell} title={desc}>
-            {colIndex === -1 ? value : editing ? inputNode : textNode}
-          </div>
+      <div className={styles.cell} title={desc}>
+        {colIndex === -1 ? value : editing ? inputNode : textNode}
+
+        <Modal
+          visible={this.state.descShow}
+          title="输入注释"
+          onCancel={this.handleDescCancel}
+          onOk={this.handleDescSave}
+        >
+          <div><TextArea value={desc} onChange={this.handleDescChange} ref={this.textarea}/></div>
+        </Modal>
+      </div>
     );
   }
 }
