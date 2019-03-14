@@ -8,7 +8,7 @@ export default {
       antd: true,
       dva: false,
       dynamicImport: false,
-      title: 'web',
+      title: 'Edit & Copy',
       dll: false,
       
       routes: {
