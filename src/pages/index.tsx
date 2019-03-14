@@ -14,12 +14,14 @@ interface CellData { // 真实存储的值
 
 interface TableCellProps extends CellData {
   onChange?: (rowIndex: number, colIndex: number, text: string, desc: string) => void
+  onCalculate?: (rowIndex: number, colIndex: number, format: string) => string
 }
 
 class TableCell extends React.PureComponent<TableCellProps> {
   readonly state = {
     editing: false,
     value: '',
+    text: '',
     desc: '',
     descShow: false,
   }
@@ -30,7 +32,7 @@ class TableCell extends React.PureComponent<TableCellProps> {
   constructor(props:TableCellProps) {
     super(props)
 
-    this.state.value = props.text || ''
+    this.state.value = this.state.text = props.text || ''
     this.state.desc = props.desc || ''
 
     this.input = React.createRef<Input>()
@@ -67,6 +69,9 @@ class TableCell extends React.PureComponent<TableCellProps> {
   }
   handleSave(e: KeyboardEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>) {
     this.toggleEdit();
+    const {value} = this.state
+    const {onCalculate, rowIndex, colIndex} = this.props
+    this.setState({ text: value && value[0] === '=' ? onCalculate(rowIndex, colIndex, value.substring(1)) : value })
   }
 
   toggleDescModal() {
@@ -91,10 +96,10 @@ class TableCell extends React.PureComponent<TableCellProps> {
   }
 
   render() {
-    const { editing, value, desc } = this.state;
+    const { editing, value, text, desc } = this.state;
     const { rowIndex, colIndex } = this.props;
 
-    const textNode = <><div onClick={this.handleEditClick} className={styles.word}>{value}</div><i onClick={this.toggleDescModal}>i</i></>
+    const textNode = <><div onClick={this.handleEditClick} className={styles.word}>{text}</div><i onClick={this.toggleDescModal} title="Remark">i</i></>
 
     const inputNodeProps = {
       value,
@@ -107,11 +112,11 @@ class TableCell extends React.PureComponent<TableCellProps> {
 
     return (
       <div className={styles.cell} title={desc}>
-        {colIndex === -1 ? value : editing ? inputNode : textNode}
+        {colIndex === -1 ? text : editing ? inputNode : textNode}
 
         <Modal
           visible={this.state.descShow}
-          title="输入注释"
+          title="Remark"
           onCancel={this.handleDescCancel}
           onOk={this.handleDescSave}
         >
@@ -125,6 +130,7 @@ class TableCell extends React.PureComponent<TableCellProps> {
 
 /**
  * 实际的值存储到 data中，每次渲染根据行列数，动态获取数据
+ * 数据更新也存到data中
  */
 class EditableTable extends React.PureComponent {
   readonly state = {
@@ -141,6 +147,7 @@ class EditableTable extends React.PureComponent {
     this.handleAddColumn = this.handleAddColumn.bind(this)
     this.handleAddRow = this.handleAddRow.bind(this)
     this.handleCellChange = this.handleCellChange.bind(this)
+    this.handleCellCalculate = this.handleCellCalculate.bind(this)
 
     this.toggleCopyModal = this.toggleCopyModal.bind(this)
   }
@@ -189,6 +196,7 @@ class EditableTable extends React.PureComponent {
             text={text}
             desc={d ? d.desc : null}
             onChange={this.handleCellChange}
+            onCalculate={this.handleCellCalculate}
           />
         )
       }
@@ -232,6 +240,29 @@ class EditableTable extends React.PureComponent {
       rowIndex, colIndex, text, desc
     }
   }
+  // 计算表达式
+  handleCellCalculate(rowIndex: number, colIndex:number, format: string) {
+    // 去掉所有空格
+    format = format.replace(/\s/g, '')
+    // 解析整个计算串到队列
+    const reg = /[\+\-\*\/\(\),:]/
+    const stack = []
+    let start = 0
+    for (let i = 0, len = format.length; i < len; i++) {
+      if (reg.test(format[i])) {
+        if (i > start) {
+          stack.push(format.substring(start, i))
+        }
+        stack.push(format[i])
+        start = i + 1
+      } else if (i === len - 1) {
+        stack.push(format.substring(start))
+      }
+    }
+    // 执行计算
+    console.log(stack)
+    return '0'
+  }
 
   toggleCopyModal() {
     this.setState({ copyModal: !this.state.copyModal })
@@ -247,6 +278,9 @@ class EditableTable extends React.PureComponent {
           <Button onClick={this.handleAddRow} type="primary">Add A Row</Button>
           &emsp;
           <Button onClick={this.handleAddColumn} type="primary">Add A Column</Button>
+          &emsp;
+          &emsp;
+          <Button type="danger" onClick={this.toggleCopyModal}>Copy to clipboard</Button>
         </p>
 
         <Table
@@ -257,21 +291,12 @@ class EditableTable extends React.PureComponent {
           scroll={{x: true}}
         />
 
-        <hr/>
 
-        <p>
-          <Button
-            type="danger"
-            onClick={this.toggleCopyModal}
-          >
-            Copy to clipboard
-          </Button>
-        </p>
         <Modal
           visible={this.state.copyModal}
-          title="复制确认"
-          okText="复制"
-          cancelText="取消"
+          title="Confirm"
+          okText="Copy"
+          cancelText="Cancel"
           okButtonProps={{id: 'copyBtn', 'data-clipboard-action': 'copy', 'data-clipboard-target': '#copyCnt'}}
           onCancel={this.toggleCopyModal}
           onOk={this.toggleCopyModal}
