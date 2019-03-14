@@ -1,7 +1,7 @@
 import React, { ChangeEvent, KeyboardEvent, FocusEvent } from 'react';
 import { Input } from 'antd';
 import TextArea from 'antd/lib/input/TextArea';
-import styles from './index.css'
+import styles from '@/pages/index.css'
 
 export interface CellProps {
   exp: string // 表达式，放到输入框中

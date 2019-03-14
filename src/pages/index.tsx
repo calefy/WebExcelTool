@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Modal } from 'antd';
 import Clipboard from 'clipboard'
-import Table, { TableData } from './Table'
+import Table, { TableData } from '@/components/Table'
 import styles from './index.css'
 
 /**
@@ -48,7 +48,6 @@ export default class Index extends React.PureComponent {
 
   render() {
     const { rowNum, colNum, copyModalVisible } = this.state
-
     return (
       <div className={styles.page}>
         <p>
