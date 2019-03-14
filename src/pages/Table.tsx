@@ -86,10 +86,13 @@ export default class EditableTable extends React.PureComponent<EditableTableProp
         const changeFunc = (exp: string) => this.handleExpressionChange(rowIndex, colIndex, exp)
         const descFunc = () => {
           this.toggleDescModal()
-          const d: TableData = this.getTableData(rowIndex, colIndex)
+          const d: TableData = {
+            ...this.getTableData(rowIndex, colIndex),
+            rowIndex, colIndex
+          }
           this.setState({
             descData: d,
-            descValue: d.desc
+            descValue: d.desc || ''
           })
         }
         const d: TableData = this.getTableData(rowIndex, colIndex) || {}
@@ -176,25 +179,25 @@ export default class EditableTable extends React.PureComponent<EditableTableProp
     return this.state.tableDataMap
   }
 
-  getCalculateValue(exp: string) {
-    // 从列名获取真实值，如A2->...
-    const getValue = (s: string) => {
-      let v = 0
-      const arr = s.match(/([A-Z]+)(\d+)/)
-      if (arr && arr.length) {
-        const col = arr[1]
-        const row = parseInt(arr[2])
-        let colNum = 0
-        for (let i = col.length - 1; i >= 0; i--) {
-          colNum += (LETTERS.indexOf(col[i]) + 1) * (Math.max(1, 26 * (col.length - 1 - i)))
-        }
-        const d: TableData = this.getTableData(row - 1, colNum - 1)
-        if (d) {
-          v = parseFloat(d.value)
-        }
+  // 从列名获取真实值，如A2->...
+  getValueFromCellName(s: string) {
+    let v = 0
+    const arr = s.match(/([A-Z]+)(\d+)/)
+    if (arr && arr.length) {
+      const col = arr[1]
+      const row = parseInt(arr[2])
+      let colNum = 0
+      for (let i = col.length - 1; i >= 0; i--) {
+        colNum += (LETTERS.indexOf(col[i]) + 1) * (Math.max(1, 26 * (col.length - 1 - i)))
       }
-      return v
+      const d: TableData = this.getTableData(row - 1, colNum - 1)
+      if (d) {
+        v = parseFloat(d.value)
+      }
     }
+    return v
+  }
+  getCalculateValue(exp: string) {
     // 去掉所有空格
     exp = exp.replace(/\s/g, '')
     // 解析整个计算串到队列
@@ -204,16 +207,16 @@ export default class EditableTable extends React.PureComponent<EditableTableProp
     for (let i = 0, len = exp.length; i < len; i++) {
       if (reg.test(exp[i])) {
         if (i > start) {
-          stack.push(getValue(exp.substring(start, i)))
+          stack.push(this.getValueFromCellName(exp.substring(start, i)))
         }
         stack.push(exp[i])
         start = i + 1
       } else if (i === len - 1) {
-        stack.push(getValue(exp.substring(start)))
+        stack.push(this.getValueFromCellName(exp.substring(start)))
       }
     }
     // 计算
-    return eval(stack.join(''))
+    return eval(stack.join('')).toString()
   }
 
   render() {
