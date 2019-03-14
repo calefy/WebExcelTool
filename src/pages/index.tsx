@@ -299,6 +299,7 @@ class EditableTable extends React.PureComponent {
           &emsp;
           <Button type="danger" onClick={this.toggleCopyModal}>Copy to clipboard</Button>
         </p>
+        <p style={{color:'#999'}}><i>* 单元格支持简单四则运算表达式，以等号开头。如：=A1+B1*(C2-C1)+C2</i></p>
 
         <Table
           columns={columns}
