@@ -137,9 +137,9 @@ class EditableTable extends React.PureComponent {
     colNum: 3, // 总列数
     rowNum: 3, // 总行数
     copyModal: false,
+    // 存储实际的值 [rowIndex_colIndex]: CellData
+    data: {}
   }
-  // 存储实际的值 [rowIndex_colIndex]: CellData
-  data = {}
 
   constructor(props) {
     super(props);
@@ -188,7 +188,7 @@ class EditableTable extends React.PureComponent {
       if (colIndex === -1) {
         return text
       } else {
-        const d: CellData = this.data[`${rowIndex}_${colIndex}`]
+        const d: CellData = this.state.data[`${rowIndex}_${colIndex}`]
         return (
           <TableCell
             rowIndex={rowIndex}
@@ -217,7 +217,7 @@ class EditableTable extends React.PureComponent {
       if (i === -1) {
         row[i] = rowIndex + 1
       } else {
-        const d: CellData = this.data[`${rowIndex}_${i}`]
+        const d: CellData = this.state.data[`${rowIndex}_${i}`]
         row[i] = d ? d.text || '' : ''
       }
     }
@@ -236,9 +236,10 @@ class EditableTable extends React.PureComponent {
 
   // 单元格数据变更
   handleCellChange(rowIndex: number, colIndex: number, text: string, desc: string) {
-    this.data[`${rowIndex}_${colIndex}`] = {
-      rowIndex, colIndex, text, desc
-    }
+    this.setState({ data: {
+      ...this.state.data,
+      [`${rowIndex}_${colIndex}`]: {rowIndex, colIndex, text, desc}
+    } })
   }
   // 计算表达式
   handleCellCalculate(rowIndex: number, colIndex:number, format: string) {
