@@ -63,15 +63,14 @@ class TableCell extends React.PureComponent<TableCellProps> {
   }
   handleChange(e: ChangeEvent<HTMLInputElement>) {
     this.setState({ value: e.target.value })
-
-    const {rowIndex, colIndex} = this.props
-    this.props.onChange(rowIndex, colIndex, e.target.value, this.state.desc)
   }
   handleSave(e: KeyboardEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>) {
     this.toggleEdit();
-    const {value} = this.state
+    const {value, desc} = this.state
     const {onCalculate, rowIndex, colIndex} = this.props
-    this.setState({ text: value && value[0] === '=' ? onCalculate(rowIndex, colIndex, value.substring(1)) : value })
+    const text = value && value[0] === '=' ? onCalculate(rowIndex, colIndex, value.substring(1)) : value
+    this.setState({ text })
+    this.props.onChange(rowIndex, colIndex, text, desc)
   }
 
   toggleDescModal() {
@@ -87,8 +86,8 @@ class TableCell extends React.PureComponent<TableCellProps> {
     this.toggleDescModal()
 
     const {rowIndex, colIndex} = this.props
-    const {value, desc} = this.state
-    this.props.onChange(rowIndex, colIndex, value, desc)
+    const {text, desc} = this.state
+    this.props.onChange(rowIndex, colIndex, text, desc)
   }
   handleDescCancel() {
     this.toggleDescModal()
@@ -241,28 +240,45 @@ class EditableTable extends React.PureComponent {
       [`${rowIndex}_${colIndex}`]: {rowIndex, colIndex, text, desc}
     } })
   }
-  // 计算表达式
+  // 计算表达式，仅支持加减乘除和括弧
   handleCellCalculate(rowIndex: number, colIndex:number, format: string) {
+    // 获取对应数值
+    const getValue = (s: string) => {
+      let v = 0
+      const arr = s.match(/([A-Z]+)(\d+)/)
+      if (arr && arr.length) {
+        const col = arr[1]
+        const row = parseInt(arr[2])
+        let colNum = 0
+        for (let i = col.length - 1; i >= 0; i--) {
+          colNum += (LETTERS.indexOf(col[i]) + 1) * (Math.max(1, 26 * (col.length - 1 - i)))
+        }
+        const d:CellData = this.state.data[`${row - 1}_${colNum - 1}`]
+        if (d) {
+          v = parseFloat(d.text)
+        }
+      }
+      return v
+    }
     // 去掉所有空格
     format = format.replace(/\s/g, '')
     // 解析整个计算串到队列
-    const reg = /[\+\-\*\/\(\),:]/
+    const reg = /[\+\-\*\/\(\)]/
     const stack = []
     let start = 0
     for (let i = 0, len = format.length; i < len; i++) {
       if (reg.test(format[i])) {
         if (i > start) {
-          stack.push(format.substring(start, i))
+          stack.push(getValue(format.substring(start, i)))
         }
         stack.push(format[i])
         start = i + 1
       } else if (i === len - 1) {
-        stack.push(format.substring(start))
+        stack.push(getValue(format.substring(start)))
       }
     }
-    // 执行计算
-    console.log(stack)
-    return '0'
+    // 计算
+    return eval(stack.join(''))
   }
 
   toggleCopyModal() {
@@ -311,7 +327,7 @@ class EditableTable extends React.PureComponent {
                       {columns.map((column, index) => {
                         const colIndex = index - 1
                         if (colIndex < 0) { return null; }
-                        const d = this.data[`${rowIndex}_${colIndex}`]
+                        const d = this.state.data[`${rowIndex}_${colIndex}`]
                         return <td key={colIndex}>
                             {row[column.dataIndex]}
                             {d && d.desc ? <p>{d.desc}</p> : null}
