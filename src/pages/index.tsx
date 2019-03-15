@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Modal } from 'antd';
+import { Button, Modal, message } from 'antd';
 import Clipboard from 'clipboard'
 import Table, { TableData } from '@/components/Table'
 import styles from './index.css'
@@ -28,7 +28,11 @@ export default class Index extends React.PureComponent {
     const clipboard = new Clipboard('#copyBtn')
     clipboard.on('success', function(e) {
       e.clearSelection();
+      message.info('Copy successed!')
     });
+    clipboard.on('error', (e: Clipboard.Event) => {
+      message.error('Copy failed: ' + e.text)
+    })
   }
 
   // 添加列
@@ -69,8 +73,8 @@ export default class Index extends React.PureComponent {
 
         <Modal
           visible={copyModalVisible}
-          title="Confirm"
-          okText="Copy"
+          title="Copy To Clipboard Confirm"
+          okText="Copy It"
           cancelText="Cancel"
           okButtonProps={{id: 'copyBtn', 'data-clipboard-action': 'copy', 'data-clipboard-target': '#copyCnt'}}
           onCancel={this.toggleCopyModal}
