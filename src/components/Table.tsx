@@ -199,7 +199,7 @@ export default class EditableTable extends React.PureComponent<EditableTableProp
   }
   getCalculateValue(exp: string) {
     // 去掉所有空格
-    exp = exp.replace(/\s/g, '')
+    exp = exp.replace(/\s/g, '').toUpperCase()
     // 解析整个计算串到队列
     const reg = /[\+\-\*\/\(\)]/
     const stack = []
